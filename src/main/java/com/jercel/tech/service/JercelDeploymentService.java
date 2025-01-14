@@ -35,6 +35,8 @@ public class JercelDeploymentService implements CommandLineRunner {
     @Value("${redis.port}")
     private int port;
 
+    @Value("${build.output.path}")
+    private String outputPath;
     
     private ExecutorService executorService;
     private Jedis jedis;
@@ -50,6 +52,9 @@ public class JercelDeploymentService implements CommandLineRunner {
 
     @Autowired
     GCSFolderUploader gcsFolderUploader;
+
+    @Autowired
+    CloudflareR2Client cloudflareR2Client;
 
     @Override
     public void run(String... args) throws Exception {
@@ -79,15 +84,16 @@ public class JercelDeploymentService implements CommandLineRunner {
     private void processMessages(String folderId) {
         log.info("Inside processMessage : {}",folderId);
         try {
-            String outputLocation = "/Users/jaypalchauhan/Documents/Projects/Learn Spring Boot/vercel-clone/jercel-deployment-service/output/"+folderId;
+            String outputLocation = outputPath+folderId;
            
             //Download project from GCS
-            gcsFolderDownloader.downloadFolder(folderId, outputLocation);
-
+            //gcsFolderDownloader.downloadFolder(folderId, outputLocation);
+            cloudflareR2Client.downloadFolder(folderId, outputLocation);
             //Building project using npm install and npm build
             NpmCommandExecutor.buildProject(outputLocation);
 
-            gcsFolderUploader.uploadFolder(Paths.get(outputLocation));
+            //gcsFolderUploader.uploadFolder(Paths.get(outputLocation));
+            cloudflareR2Client.uploadFolder(Paths.get(outputLocation));
 
             removeFile(new File(outputLocation));
             
